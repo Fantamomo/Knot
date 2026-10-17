@@ -1,0 +1,43 @@
+# Version catalog is a central place for you to declare and version dependencies
+# https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog
+# https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
+
+[versions]
+kotlin = "2.4.10"
+kotlinxDatetime = "0.8.0"
+kotlinxSerializationJSON = "1.11.0"
+kotlinxCoroutines = "1.10.2"
+kotlinxIo = "0.9.1"
+kotlinxAtomicfu = "0.33.0"
+kotlinxCli = "0.3.6"
+ktor = "3.5.2"
+logback = "1.6.3"
+kotlinx-rpc = "0.10.4"
+jvm-lib2p2 = "1.3.8-RELEASE"
+netty = "4.2.19.Final"
+
+[libraries]
+kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinxSerialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJSON" }
+kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinxCoroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+kotlinxIo = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIo" }
+kotlinxCli = { module = "org.jetbrains.kotlinx:kotlinx-cli", version.ref = "kotlinxCli" }
+ktorNetwork = { module = "io.ktor:ktor-network", version.ref = "ktor" }
+ktorNetworkTls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
+logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+kotlinx-rpc-client = { module = "org.jetbrains.kotlinx:kotlinx-rpc-krpc-client", version.ref = "kotlinx-rpc" }
+kotlinx-rpc-server = { module = "org.jetbrains.kotlinx:kotlinx-rpc-krpc-server", version.ref = "kotlinx-rpc" }
+kotlinx-rpc-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-rpc-krpc-serialization-json", version.ref = "kotlinx-rpc" }
+jvm-lib2p2 = { module = "io.libp2p:jvm-libp2p", version.ref = "jvm-lib2p2" }
+netty-all = { module = "io.netty:netty-all", version.ref = "netty" }
+
+# Libraries can be bundled together for easier import
+[bundles]
+kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines", "kotlinxIo"]
+ktorNetworks = ["ktorNetwork", "ktorNetworkTls"]
+
+[plugins]
+kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlinxPluginAtomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "kotlinxAtomicfu" }
