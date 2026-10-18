@@ -3,6 +3,7 @@ plugins {
     id("com.gradleup.shadow")
     application
     alias(libs.plugins.kotlinPluginSerialization)
+    alias(libs.plugins.kotlinxPluginAtomicfu)
 }
 
 dependencies {

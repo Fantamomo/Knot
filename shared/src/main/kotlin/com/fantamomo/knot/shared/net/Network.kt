@@ -11,7 +11,7 @@ import com.fantamomo.knot.shared.net.packets.Packet
 import com.fantamomo.knot.shared.net.packets.PacketEnvelop
 import com.fantamomo.knot.shared.net.packets.internal.ManagementPacket
 import com.fantamomo.knot.shared.net.security.SecureTransport
-import com.fantamomo.knot.shared.net.security.impl.PlainSecureTransport
+import com.fantamomo.knot.shared.net.security.impl.TlsSecureTransport
 import com.fantamomo.knot.shared.net.transport.Transport
 import com.fantamomo.knot.shared.net.util.DefaultPacketDeduplicator
 import kotlinx.coroutines.*
@@ -23,13 +23,18 @@ import org.slf4j.LoggerFactory
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
+import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.io.path.inputStream
 
 class Network(
     val scope: CoroutineScope,
     val host: String = "0.0.0.0",
     val port: Int = 5001,
     val localPeerId: PeerId,
+    keyStoreFile: Path,
+    keyStorePassword: CharArray,
+    caCertificateInput: Path
 ) {
     private val logger = LoggerFactory.getLogger(Network::class.java)
 
@@ -43,8 +48,11 @@ class Network(
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
+    private val sslContext = TlsSecureTransport.createMutualTlsContext(keyStoreFile.inputStream(), keyStorePassword, caCertificateInput.inputStream())
+
     init {
         require(port in 1..65535) { "Port must be between 1 and 65535" }
+        keyStorePassword.fill('0')
     }
 
     val peers: Map<PeerId, ConnectedPeer>
@@ -92,7 +100,7 @@ class Network(
     }
 
     private suspend fun createSecureTransport(transport: Transport, initiator: Boolean): SecureTransport {
-        val secureTransport = PlainSecureTransport(transport, localPeerId)
+        val secureTransport = TlsSecureTransport(transport, localPeerId, sslContext)
         secureTransport.start()
         if (initiator) {
             secureTransport.doClientHandshake()
@@ -204,7 +212,7 @@ class Network(
     }
 
     fun incomingPackets(): Flow<IncomingPacket<*>> = incomingPackets.receiveAsFlow()
-    
+
     companion object {
         private fun privateNetworkAddress(): InetAddress {
             val interfaces = NetworkInterface.getNetworkInterfaces().toList()
