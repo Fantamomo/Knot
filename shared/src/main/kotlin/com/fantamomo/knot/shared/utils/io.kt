@@ -5,6 +5,8 @@ import com.fantamomo.knot.shared.model.PeerId
 import kotlinx.io.*
 import kotlin.uuid.Uuid
 
+// Uuid
+
 fun Sink.writeUuid(uuid: Uuid) {
     uuid.toLongs { mostSignificantBits, leastSignificantBits ->
         writeLong(mostSignificantBits)
@@ -17,6 +19,8 @@ fun Source.readUuid(): Uuid {
     val leastSignificantBits = readLong()
     return Uuid.fromLongs(mostSignificantBits, leastSignificantBits)
 }
+
+// String (with length prefix)
 
 fun Sink.writeSmartString(string: String) {
     val byteLength = string.encodeToByteArray().size
@@ -36,6 +40,8 @@ fun Source.readSmartString(): String {
     return readString(length.toLong())
 }
 
+// ByteArray (with length prefix)
+
 fun Sink.writeSmartBytes(bytes: ByteArray) {
     val length = bytes.size
 
@@ -52,9 +58,13 @@ fun Source.readSmartBytes(): ByteArray {
     return readByteArray(length.toInt())
 }
 
+// PeerId
+
 fun Sink.writePeerId(peerId: PeerId) = write(peerId.id)
 
 fun Source.readPeerId() = PeerId(readByteArray(PeerId.SIZE))
+
+// PeerAddress
 
 fun Sink.writePeerAddress(peerAddress: PeerAddress) {
     writeSmartString(peerAddress.address)
@@ -68,6 +78,8 @@ fun Source.readPeerAddress(): PeerAddress {
     return PeerAddress(address, port)
 }
 
+// List<E>
+
 inline fun <E> Sink.writeList(list: List<E>, writer: Sink.(E) -> Unit) {
     writeUShort(list.size.toUShort())
     list.forEach { writer(it) }
@@ -78,3 +90,9 @@ inline fun <E> Source.readList(reader: Source.() -> E): List<E> {
     if (size == 0) return emptyList()
     return List(size) { reader() }
 }
+
+// Boolean
+
+fun Sink.writeBoolean(value: Boolean) = writeByte(if (value) 1 else 0)
+
+fun Source.readBoolean() = readByte() != 0.toByte()

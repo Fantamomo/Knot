@@ -6,9 +6,11 @@ import com.fantamomo.knot.shared.utils.switch
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
+import java.net.ConnectException
 import java.nio.file.Path
 import kotlin.io.path.*
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
 
 object Node {
     private val logger = LoggerFactory.getLogger(Node::class.java)
@@ -91,35 +93,143 @@ object Node {
         logger.info("Peer connected: {}", peerId)
 
         scope.launch {
-            val file = config.configDir.resolve(config.knownPeersFileName)
+            delay(5.seconds)
 
-            val peer = network.peers[peerId] ?: return@launch
+//            val peer = network.peers[peerId] ?: return@launch
 
-            synchronized(this@Node) {
-                val lines = if (file.notExists()) {
-                    emptyList()
-                } else {
-                    file.readLines()
-                }
+            val addresses = buildList {
+//                add(peer.client.transport.remoteAddr.hostAddress to peer.client.transport.remotePort)
 
-                val alreadyKnown = lines.any { line ->
-                    val trimmed = line.trim()
-                    trimmed.isNotEmpty() &&
-                            !trimmed.startsWith("#") &&
-                            trimmed.split(Regex("\\s+")).firstOrNull() == peerId.toString()
-                }
+                addAll(network.router.knownAddresses(peerId))
+            }
 
-                if (alreadyKnown) return@launch
+            saveKnownPeer(peerId, addresses)
+        }
+    }
 
+    private fun saveKnownPeer(
+        peerId: PeerId,
+        newAddresses: List<Pair<String, Int>>
+    ) {
+        val file = config.configDir.resolve(config.knownPeersFileName)
+
+        synchronized(this@Node) {
+            try {
                 file.parent?.takeUnless(Path::exists)?.createDirectories()
 
-                val updated = lines + "$peerId ${peer.client.transport.remoteAddr}:${peer.client.transport.remotePort}"
+                val lines = if (file.exists()) file.readLines() else emptyList()
+                val updatedLines = ArrayList<String>()
+                val knownAddresses = linkedSetOf<Pair<String, Int>>()
+                var found = false
 
-                file.writeLines(updated)
+                for (line in lines) {
+                    val trimmed = line.trim()
 
-                logger.info("Added peer {} to known peers file {}", peerId, file)
+                    if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                        updatedLines += line
+                        continue
+                    }
+
+                    val parts = trimmed.split(Regex("\\s+"))
+                    val existingId = try {
+                        PeerId.fromHexString(parts[0])
+                    } catch (_: Exception) {
+                        updatedLines += line
+                        continue
+                    }
+
+                    if (existingId != peerId) {
+                        updatedLines += line
+                        continue
+                    }
+
+                    found = true
+
+                    for (entry in parts.drop(1)) {
+                        parseAddress(entry)?.let(knownAddresses::add)
+                    }
+                }
+
+                knownAddresses.addAll(
+                    newAddresses.filter { (host, port) ->
+                        host.isNotBlank() && port in 1..65535
+                    }
+                )
+
+                val newLine = buildString {
+                    append(peerId)
+                    for ((host, port) in knownAddresses) {
+                        append(' ')
+                        append(formatAddress(host, port))
+                    }
+                }
+
+                if (found) {
+                    val existingIndex = updatedLines.indexOfFirst { line ->
+                        val trimmed = line.trim()
+                        trimmed.isNotEmpty() &&
+                                !trimmed.startsWith("#") &&
+                                runCatching {
+                                    PeerId.fromHexString(
+                                        trimmed.split(Regex("\\s+"))[0]
+                                    ) == peerId
+                                }.getOrDefault(false)
+                    }
+
+                    if (existingIndex >= 0) {
+                        updatedLines[existingIndex] = newLine
+                    } else {
+                        updatedLines += newLine
+                    }
+                } else {
+                    updatedLines += newLine
+                }
+
+                file.writeLines(updatedLines)
+
+                logger.info(
+                    "Saved peer {} with {} known addresses to {}",
+                    peerId,
+                    knownAddresses.size,
+                    file
+                )
+            } catch (e: Exception) {
+                logger.error("Failed to save known peer {}", peerId, e)
             }
         }
+    }
+
+    private fun parseAddress(entry: String): Pair<String, Int>? {
+        val normalized = if (entry.startsWith("[")) {
+            val end = entry.indexOf(']')
+            if (end < 0 || end + 1 >= entry.length ||
+                entry[end + 1] != ':'
+            ) return null
+
+            entry.substring(1, end) to entry.substring(end + 2).toIntOrNull()
+        } else {
+            val index = entry.lastIndexOf(':')
+            if (index <= 0) return null
+
+            entry.substring(0, index) to entry.substring(index + 1).toIntOrNull()
+        }
+
+        val (host, port) = normalized
+        if (host.isBlank() || port == null || port !in 1..65535) {
+            return null
+        }
+
+        return host to port
+    }
+
+    private fun formatAddress(host: String, port: Int): String {
+        val formattedHost = if (':' in host && !host.startsWith("[")) {
+            "[$host]"
+        } else {
+            host
+        }
+
+        return "$formattedHost:$port"
     }
 
     private fun requireFile(path: Path, description: String): Path {
@@ -193,6 +303,8 @@ object Node {
                 withTimeoutOrNull(cfg.connectTimeout) { network.connectTo(host, port) }
             } catch (e: CancellationException) {
                 throw e
+            } catch (_: ConnectException) {
+                logger.debug("Could not connect to {} at {}:{}", peer.id, host, port)
             } catch (e: Exception) {
                 logger.debug("Connect to {} at {}:{} failed", peer.id, host, port, e)
             }

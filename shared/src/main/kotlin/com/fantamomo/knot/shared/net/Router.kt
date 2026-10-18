@@ -65,6 +65,22 @@ class Router(val network: Network) {
 
     fun knownPeers(): Set<PeerId> = nodes.keys.toSet()
 
+    fun knownAddresses(peerId: PeerId): List<Pair<String, Int>> {
+        return nodes[peerId]
+            ?.advertisement
+            ?.knownAddresses
+            .orEmpty()
+            .mapNotNull { address ->
+                val port = address.port ?: return@mapNotNull null
+
+                if (address.address.isBlank() || port !in 1..65535) {
+                    return@mapNotNull null
+                }
+
+                address.address to port
+            }
+    }
+
     fun latency(peer: PeerId): Long? = latencies[peer]
 
     fun onPeerConnected(peerId: PeerId) {
