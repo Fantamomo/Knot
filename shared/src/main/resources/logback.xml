@@ -9,7 +9,7 @@
     </appender>
 
     <appender name="FILE"
-              class="com.fantamomo.knot.shared.util.LazyRollingFileAppender">
+              class="com.fantamomo.knot.shared.utils.LazyRollingFileAppender">
 
         <file>logs/application.log</file>
 

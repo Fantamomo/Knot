@@ -28,10 +28,14 @@ class NettyTransport(
     override val remoteAddr: InetAddress
         get() = socketAddress(channel.remoteAddress()).address
             ?: error("Remote address is unresolved")
+    override val remotePort: Int
+        get() = socketAddress(channel.remoteAddress()).port
 
     override val localAddr: InetAddress
         get() = socketAddress(channel.localAddress()).address
             ?: error("Local address is unresolved")
+    override val localPort: Int
+        get() = socketAddress(channel.localAddress()).port
 
     override suspend fun awaitReadable() {
         incoming.awaitReadable()

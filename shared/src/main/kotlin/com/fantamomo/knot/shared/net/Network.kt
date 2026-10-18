@@ -34,7 +34,8 @@ class Network(
     val localPeerId: PeerId,
     keyStoreFile: Path,
     keyStorePassword: CharArray,
-    caCertificateInput: Path
+    caCertificateInput: Path,
+    private val onPeerConnected: (PeerId) -> Unit = {}
 ) {
     private val logger = LoggerFactory.getLogger(Network::class.java)
 
@@ -48,7 +49,11 @@ class Network(
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    private val sslContext = TlsSecureTransport.createMutualTlsContext(keyStoreFile.inputStream(), keyStorePassword, caCertificateInput.inputStream())
+    private val sslContext = TlsSecureTransport.createMutualTlsContext(
+        keyStoreFile.inputStream(),
+        keyStorePassword,
+        caCertificateInput.inputStream()
+    )
 
     init {
         require(port in 1..65535) { "Port must be between 1 and 65535" }
@@ -90,6 +95,7 @@ class Network(
     }
 
     suspend fun connectTo(host: String, port: Int) {
+        logger.debug("Connecting to $host:$port")
         val client = NettyConnectionProvider.createClient(host, port)
         handleClient(client, true)
     }
@@ -111,6 +117,7 @@ class Network(
     }
 
     private suspend fun handleClient(client: Client, initiator: Boolean) {
+        logger.debug("Handling client connection from {}", client.transport.remoteAddr)
         try {
             val transport = client.transport
             transport.start()
@@ -143,7 +150,13 @@ class Network(
                 }
             }
 
+            logger.debug("Connection to {} established", remotePeerId)
             router.onPeerConnected(remotePeerId)
+            try {
+                onPeerConnected(remotePeerId)
+            } catch (e: Exception) {
+                logger.warn("onPeerConnected failed for {}", remotePeerId, e)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

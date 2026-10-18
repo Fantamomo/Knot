@@ -17,6 +17,7 @@ data class NodeConfig(
     val keyStorePasswordFileName: String = "peer.p12.password",
     val peerIdFileName: String = "peer.id",
     val knownPeersFileName: String = "known.peers",
+    val bootstrapNode: String? = null,
     val reconnect: ReconnectConfig = ReconnectConfig()
 ) {
     data class ReconnectConfig(
@@ -73,6 +74,7 @@ data class NodeConfig(
                 keyStorePasswordFileName = values["file.keystore.password"] ?: d.keyStorePasswordFileName,
                 peerIdFileName = values["file.peerId"] ?: d.peerIdFileName,
                 knownPeersFileName = values["file.knownPeers"] ?: d.knownPeersFileName,
+                bootstrapNode = values["bootstrap.node"] ?: d.bootstrapNode,
                 reconnect = ReconnectConfig(
                     enabled = values["reconnect.enabled"]?.toBooleanStrictOrNull() ?: rd.enabled,
                     initialDelay = values["reconnect.initialDelay"]?.let(Duration.Companion::parse) ?: rd.initialDelay,

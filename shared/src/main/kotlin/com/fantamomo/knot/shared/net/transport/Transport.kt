@@ -7,7 +7,9 @@ import java.net.InetAddress
 interface Transport {
 
     val remoteAddr: InetAddress
+    val remotePort: Int
     val localAddr: InetAddress
+    val localPort: Int
 
     suspend fun start() {}
 

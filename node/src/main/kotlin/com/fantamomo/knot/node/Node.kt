@@ -7,9 +7,7 @@ import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
-import kotlin.io.path.notExists
-import kotlin.io.path.readLines
-import kotlin.io.path.readText
+import kotlin.io.path.*
 import kotlin.random.Random
 
 object Node {
@@ -64,10 +62,22 @@ object Node {
             localPeerId = localPeerId,
             keyStoreFile = p12File,
             keyStorePassword = p12PasswordFile.readText().trim().toCharArray(),
-            caCertificateInput = caFile
+            caCertificateInput = caFile,
+            onPeerConnected = ::onPeerConnected
         )
 
         network.start()
+
+        val bootstrapNode = config.bootstrapNode
+        if (bootstrapNode != null) {
+            try {
+                val host = bootstrapNode.split(":")[0]
+                val port = bootstrapNode.split(":")[1].toInt()
+                launch { network.connectTo(host, port) }
+            } catch (e: Exception) {
+                logger.error("Failed to connect to bootstrap node: $bootstrapNode", e)
+            }
+        }
 
         for (peer in loadKnownPeers(dir.resolve(config.knownPeersFileName))) {
             if (peer.id == localPeerId) continue
@@ -75,6 +85,41 @@ object Node {
         }
 
         awaitCancellation()
+    }
+
+    private fun onPeerConnected(peerId: PeerId) {
+        logger.info("Peer connected: {}", peerId)
+
+        scope.launch {
+            val file = config.configDir.resolve(config.knownPeersFileName)
+
+            val peer = network.peers[peerId] ?: return@launch
+
+            synchronized(this@Node) {
+                val lines = if (file.notExists()) {
+                    emptyList()
+                } else {
+                    file.readLines()
+                }
+
+                val alreadyKnown = lines.any { line ->
+                    val trimmed = line.trim()
+                    trimmed.isNotEmpty() &&
+                            !trimmed.startsWith("#") &&
+                            trimmed.split(Regex("\\s+")).firstOrNull() == peerId.toString()
+                }
+
+                if (alreadyKnown) return@launch
+
+                file.parent?.takeUnless(Path::exists)?.createDirectories()
+
+                val updated = lines + "$peerId ${peer.client.transport.remoteAddr}:${peer.client.transport.remotePort}"
+
+                file.writeLines(updated)
+
+                logger.info("Added peer {} to known peers file {}", peerId, file)
+            }
+        }
     }
 
     private fun requireFile(path: Path, description: String): Path {
