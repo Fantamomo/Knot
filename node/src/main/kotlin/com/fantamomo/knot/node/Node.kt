@@ -1,5 +1,6 @@
 package com.fantamomo.knot.node
 
+import com.fantamomo.knot.shared.manager.TunnelManager
 import com.fantamomo.knot.shared.model.PeerId
 import com.fantamomo.knot.shared.net.Network
 import com.fantamomo.knot.shared.utils.switch
@@ -26,11 +27,17 @@ object Node {
 
     lateinit var network: Network
         private set
+    lateinit var tunnelManager: TunnelManager
+        private set
 
     private class KnownPeer(val id: PeerId, val addresses: List<Pair<String, Int>>)
 
     suspend fun start(args: Array<String>) {
-        if (!started.compareAndSet(expect = false, update = true)) throw IllegalStateException("Node is already running")
+        if (!started.compareAndSet(
+                expect = false,
+                update = true
+            )
+        ) throw IllegalStateException("Node is already running")
 
         config = NodeConfig.load(args)
 
@@ -70,6 +77,10 @@ object Node {
 
         network.start()
 
+        tunnelManager = TunnelManager(network)
+
+        launch { tunnelManager.start() }
+
         val bootstrapNode = config.bootstrapNode
         if (bootstrapNode != null) {
             try {
@@ -84,6 +95,14 @@ object Node {
         for (peer in loadKnownPeers(dir.resolve(config.knownPeersFileName))) {
             if (peer.id == localPeerId) continue
             launch { maintainConnection(peer) }
+        }
+
+        if (System.getenv("OPEN_TUNNEL") == "true") {
+            launch {
+                delay(5.seconds)
+                logger.info("Opening tunnel")
+                tunnelManager.openTunnel(network.peers.keys.first(), "localhost", 8000, "0.0.0.0", 8888)
+            }
         }
 
         awaitCancellation()

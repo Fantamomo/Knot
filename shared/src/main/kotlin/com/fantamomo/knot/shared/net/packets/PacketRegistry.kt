@@ -1,6 +1,8 @@
 package com.fantamomo.knot.shared.net.packets
 
+import com.fantamomo.knot.shared.net.packets.file.FilePacket
 import com.fantamomo.knot.shared.net.packets.internal.ManagementPacket
+import com.fantamomo.knot.shared.net.packets.tunnel.TunnelPacket
 import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 
@@ -11,7 +13,9 @@ object PacketRegistry {
     private val byClass: MutableMap<KClass<out Packet>, PacketCodec<out Packet>> = mutableMapOf()
 
     init {
+        FilePacket.register()
         ManagementPacket.register()
+        TunnelPacket.register()
     }
 
     fun register(codec: PacketCodec<out Packet>) {
