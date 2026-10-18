@@ -1,0 +1,90 @@
+name: release.yml
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: setup JDK
+        uses: actions/setup-java@v6.1.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: get project version
+        id: get-version
+        shell: bash
+        run: |
+          VERSION=$(./gradlew -q properties | awk -F ': ' '$1 == "version" { print $2; exit }')
+          
+          if [ -z "$VERSION" ]; then
+            echo "Failed to retrieve project version"
+            exit 1
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: check if version already exists
+        id: check-version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.get-version.outputs.version }}
+        run: |
+          if gh release view "v${VERSION}" > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release v${VERSION} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: build project
+        if: steps.check-version.outputs.exists == 'false'
+        run: ./gradlew shadowJar
+
+      - name: collect jars
+        if: steps.check-version.outputs.exists == 'false'
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          for module in cli cli-agent node; do
+            shopt -s nullglob
+            jars=("$module"/build/libs/*.jar)
+
+            if [ ${#jars[@]} -eq 0 ]; then
+              echo "No JAR found for $module"
+              exit 1
+            fi
+
+            for jar in "${jars[@]}"; do
+              cp "$jar" "release-assets/${module}-$(basename "$jar")"
+            done
+          done
+
+      - name: publish
+        if: steps.check-version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.get-version.outputs.version }}
+        run: |
+          gh release create "v${VERSION}" release-assets/* --title "v${VERSION}" --generate-notes --target "${GITHUB_SHA}"
