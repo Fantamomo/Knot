@@ -36,6 +36,7 @@ data class UploadFileChunkPacket(
         }
 
         override fun decode(source: Source): UploadFileChunkPacket {
+            println("Decoding upload file chunk packet")
             val uploadId = source.readUuid()
             val sequenceNumber = source.readInt()
             val chunk = source.readSmartBytes()

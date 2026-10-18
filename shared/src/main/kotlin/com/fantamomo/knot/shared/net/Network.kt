@@ -29,8 +29,8 @@ import kotlin.io.path.inputStream
 
 class Network(
     val scope: CoroutineScope,
-    val host: String = "0.0.0.0",
-    val port: Int = 5001,
+    val host: String? = "0.0.0.0",
+    val port: Int? = 5001,
     val localPeerId: PeerId,
     keyStoreFile: Path,
     keyStorePassword: CharArray,
@@ -56,7 +56,7 @@ class Network(
     )
 
     init {
-        require(port in 1..65535) { "Port must be between 1 and 65535" }
+        require(port == null || port in 1..65535) { "Port must be between 1 and 65535" }
         keyStorePassword.fill('0')
     }
 
@@ -64,13 +64,15 @@ class Network(
         field: ConcurrentHashMap<PeerId, ConnectedPeer> = ConcurrentHashMap()
 
     suspend fun start() {
-        val server = NettyConnectionProvider.createServer(host, port)
-        server.start()
+        val server = if (host != null && port != null) NettyConnectionProvider.createServer(host, port) else null
+        server?.start()
         scope.launch {
             router.start()
         }
-        scope.launch {
-            listen(server)
+        if (server != null) {
+            scope.launch {
+                listen(server)
+            }
         }
     }
 
@@ -100,7 +102,8 @@ class Network(
         handleClient(client, true)
     }
 
-    internal fun localAddresses(): List<PeerAddress> {
+    internal fun localAddresses(): List<PeerAddress>? {
+        if (host == null || port == null) return null
         val advertised = if (host == "0.0.0.0") privateAddress.hostAddress else host
         return listOf(PeerAddress(advertised, port))
     }

@@ -67,15 +67,18 @@ class FileManager(val network: Network, val outputDir: Path) {
     }
 
     private fun handleFileUploadRequest(packet: FileUploadRequestPacket, source: PeerId) {
+        logger.debug("Received file upload request packet for file {}", packet.fileName)
         network.scope.launch {
             val uploadId = Uuid.random()
             incomingFiles[uploadId] = IncomingFile(packet.requestId, packet.fileName, uploadId, source, packet.expectedFileSize)
             val responsePacket = FileUploadRequestResponsePacket(packet.requestId, true, null, uploadId)
             network.sendPacket(responsePacket, source)
+            logger.debug("Sent file upload request response packet for request ID {}", packet.requestId)
         }
     }
 
     private fun handleFileUploadRequestResponse(packet: FileUploadRequestResponsePacket, source: PeerId) {
+        logger.debug("Received file upload request response packet for request ID {}", packet.requestId)
         val deferred = fileUploadRequestResponsePackets[packet.requestId] ?: return
         deferred.complete(packet)
     }
@@ -90,10 +93,12 @@ class FileManager(val network: Network, val outputDir: Path) {
             logger.warn("Received finish file upload from wrong source $source for file id ${packet.fileId}")
             return
         }
+        logger.info("Received finish file upload for file id {}", packet.fileId)
         incomingFile.finish()
     }
 
     private suspend fun handleUploadFileChunk(packet: UploadFileChunkPacket, source: PeerId) {
+        logger.debug("Received upload chunk for upload id {}", packet.uploadId)
         val incomingFile = incomingFiles[packet.uploadId]
         if (incomingFile == null) {
             logger.warn("Received upload chunk for unknown upload id ${packet.uploadId}")
@@ -103,6 +108,7 @@ class FileManager(val network: Network, val outputDir: Path) {
             logger.warn("Received upload chunk from wrong source $source for upload id ${packet.uploadId}")
             return
         }
+        logger.debug("Received upload chunk for file id {}", packet.uploadId)
         incomingFile.write(packet.chunk)
     }
 
@@ -126,6 +132,7 @@ class FileManager(val network: Network, val outputDir: Path) {
 
         val fileUploadRequestPacket = FileUploadRequestPacket(requestId,path.name, Files.size(path).toULong())
         network.sendPacket(fileUploadRequestPacket, target)
+        logger.debug("Sent file upload request packet for file ${path.name}")
 
         val responsePacket = withTimeoutOrNull(5.seconds) {
             response.await()
@@ -148,6 +155,7 @@ class FileManager(val network: Network, val outputDir: Path) {
             if (read == -1) {
                 val packet = FinishFileUploadPacket(uploadId, chunks, size)
                 network.sendPacket(packet, target)
+                logger.debug("Sent finish file upload packet for upload ID {}", uploadId)
                 break
             }
 
@@ -157,6 +165,7 @@ class FileManager(val network: Network, val outputDir: Path) {
             val chunkPacket = UploadFileChunkPacket(uploadId, chunks, uploadedBytes)
 
             network.sendPacket(chunkPacket, target)
+            logger.debug("Sent upload file chunk packet for upload ID {}, chunk {}", uploadId, chunks)
 
             chunks++
             size += read

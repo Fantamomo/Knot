@@ -181,16 +181,19 @@ class Router(val network: Network) {
 
     private fun nextSequence(): Long = sequence.updateAndGet { maxOf(it + 1, System.currentTimeMillis()) }
 
-    private fun selfAdvertisement() = PeerAdvertisement(
-        peerId = network.localPeerId,
-        knownAddresses = network.localAddresses(),
-        connectedPeers = network.peers.keys.toList(),
-        sequence = nextSequence()
-    )
+    private fun selfAdvertisement() = network.localAddresses()?.let {
+        PeerAdvertisement(
+            peerId = network.localPeerId,
+            knownAddresses = it,
+            connectedPeers = network.peers.keys.toList(),
+            sequence = nextSequence()
+        )
+    }
 
     private fun allAdvertisements(): List<PeerAdvertisement> {
         val result = ArrayList<PeerAdvertisement>(nodes.size + 1)
-        result += selfAdvertisement()
+        val selfAdvertisement = selfAdvertisement()
+        if (selfAdvertisement != null) result += selfAdvertisement
         for (node in nodes.values) result += node.advertisement
         return result
     }
@@ -412,7 +415,8 @@ class Router(val network: Network) {
 
     private suspend fun advertiseLoop() {
         for (signal in advertiseTrigger) {
-            guarded { network.sendPacket(selfAdvertisement(), PeerId.broadcast()) }
+            val selfAdvertisement = selfAdvertisement()
+            if (selfAdvertisement != null) guarded { network.sendPacket(selfAdvertisement, PeerId.broadcast()) }
             delay(ADVERTISE_COALESCE_MS.milliseconds)
         }
     }

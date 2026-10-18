@@ -1,5 +1,6 @@
 package com.fantamomo.knot.node
 
+import com.fantamomo.knot.shared.manager.FileManager
 import com.fantamomo.knot.shared.manager.TunnelManager
 import com.fantamomo.knot.shared.model.PeerId
 import com.fantamomo.knot.shared.net.Network
@@ -26,6 +27,8 @@ object Node {
     val configDir: Path get() = config.configDir
 
     lateinit var network: Network
+        private set
+    lateinit var fileManager: FileManager
         private set
     lateinit var tunnelManager: TunnelManager
         private set
@@ -77,8 +80,10 @@ object Node {
 
         network.start()
 
-        tunnelManager = TunnelManager(network)
+        fileManager = FileManager(network, config.fileOutputDir)
+        launch { fileManager.start() }
 
+        tunnelManager = TunnelManager(network)
         launch { tunnelManager.start() }
 
         val bootstrapNode = config.bootstrapNode
@@ -97,13 +102,13 @@ object Node {
             launch { maintainConnection(peer) }
         }
 
-        if (System.getenv("OPEN_TUNNEL") == "true") {
-            launch {
-                delay(5.seconds)
-                logger.info("Opening tunnel")
-                tunnelManager.openTunnel(network.peers.keys.first(), "localhost", 8000, "0.0.0.0", 8888)
-            }
-        }
+//        if (System.getenv("OPEN_TUNNEL") == "true") {
+//            launch {
+//                delay(5.seconds)
+//                logger.info("Opening tunnel")
+//                tunnelManager.openTunnel(network.peers.keys.first(), "localhost", 8000, "0.0.0.0", 8888)
+//            }
+//        }
 
         awaitCancellation()
     }

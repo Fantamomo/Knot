@@ -3,6 +3,7 @@ package com.fantamomo.knot.node
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.*
+import kotlin.io.path.Path
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.time.Duration
@@ -18,6 +19,7 @@ data class NodeConfig(
     val peerIdFileName: String = "peer.id",
     val knownPeersFileName: String = "known.peers",
     val bootstrapNode: String? = null,
+    val fileOutputDir: Path = configDir.resolve("files"),
     val reconnect: ReconnectConfig = ReconnectConfig()
 ) {
     data class ReconnectConfig(
@@ -75,6 +77,7 @@ data class NodeConfig(
                 peerIdFileName = values["file.peerId"] ?: d.peerIdFileName,
                 knownPeersFileName = values["file.knownPeers"] ?: d.knownPeersFileName,
                 bootstrapNode = values["bootstrap.node"] ?: d.bootstrapNode,
+                fileOutputDir = values["file.outputDir"]?.let { runCatching { Path(it) }.getOrNull() } ?: d.fileOutputDir,
                 reconnect = ReconnectConfig(
                     enabled = values["reconnect.enabled"]?.toBooleanStrictOrNull() ?: rd.enabled,
                     initialDelay = values["reconnect.initialDelay"]?.let(Duration.Companion::parse) ?: rd.initialDelay,
