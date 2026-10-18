@@ -1,10 +1,18 @@
 package com.fantamomo.knot.shared.net.packets
 
+import com.fantamomo.knot.shared.net.packets.internal.ManagementPacket
+import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 
 object PacketRegistry {
+    private val logger = LoggerFactory.getLogger(PacketRegistry::class.java)
+
     private val byId: MutableMap<String, PacketCodec<out Packet>> = mutableMapOf()
     private val byClass: MutableMap<KClass<out Packet>, PacketCodec<out Packet>> = mutableMapOf()
+
+    init {
+        ManagementPacket.register()
+    }
 
     fun register(codec: PacketCodec<out Packet>) {
         val id = codec.id
@@ -16,6 +24,8 @@ object PacketRegistry {
 
         if (byId.containsKey(id)) throw IllegalArgumentException("Packet id already registered: $id")
         if (byClass.containsKey(packetClass)) throw IllegalArgumentException("Packet class already registered: $packetClass")
+
+        logger.debug("Registering packet codec for id: {} and class: {}", id, packetClass)
 
         byId[id] = codec
         byClass[packetClass] = codec

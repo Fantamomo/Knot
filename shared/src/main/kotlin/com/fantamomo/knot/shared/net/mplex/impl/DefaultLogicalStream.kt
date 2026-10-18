@@ -37,8 +37,6 @@ class DefaultLogicalStream(
     internal fun deliver(packet: PacketEnvelop) {
         if (closed.get()) return
 
-        println("Packet delivered to $internalId: $packet")
-
         inbox.trySend(packet)
     }
 

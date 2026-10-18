@@ -19,6 +19,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinxCoroutines)
     testImplementation(libs.kotlinxCoroutinesTest)
+    implementation(kotlin("reflect"))
 }
 
 tasks.test {
