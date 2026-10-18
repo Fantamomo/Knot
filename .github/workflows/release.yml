@@ -77,7 +77,7 @@ jobs:
             fi
 
             for jar in "${jars[@]}"; do
-              cp "$jar" "release-assets/${module}-$(basename "$jar")"
+              cp "$jar" "release-assets/$(basename "$jar")"
             done
           done
 
