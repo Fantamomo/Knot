@@ -2,7 +2,6 @@ package com.fantamomo.knot.shared.net.mplex.impl
 
 import com.fantamomo.knot.shared.net.mplex.LogicalStream
 import com.fantamomo.knot.shared.net.packets.PacketEnvelop
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -11,7 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class DefaultLogicalStream(
     override val transport: DefaultMplexTransport,
     override val id: String,
-    override val internalId: Byte,
+    val internalId: Byte,
     capacity: Int = DefaultMplexTransport.STREAM_QUEUE_CAPACITY,
 ) : LogicalStream {
 
@@ -22,8 +21,7 @@ class DefaultLogicalStream(
     private val closed = AtomicBoolean(false)
 
     private val inbox = Channel<PacketEnvelop>(
-        capacity = capacity,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        capacity = Channel.UNLIMITED,
     )
 
     override suspend fun send(packet: PacketEnvelop) {

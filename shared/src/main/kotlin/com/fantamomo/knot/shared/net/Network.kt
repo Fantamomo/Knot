@@ -5,7 +5,8 @@ import com.fantamomo.knot.shared.model.PeerId
 import com.fantamomo.knot.shared.net.connection.Client
 import com.fantamomo.knot.shared.net.connection.Server
 import com.fantamomo.knot.shared.net.connection.netty.NettyConnectionProvider
-import com.fantamomo.knot.shared.net.mplex.impl.DefaultMplexTransport
+import com.fantamomo.knot.shared.net.mplex.MplexTransport
+import com.fantamomo.knot.shared.net.mplex.impl.DirectMplexTransport
 import com.fantamomo.knot.shared.net.packets.IncomingPacket
 import com.fantamomo.knot.shared.net.packets.Packet
 import com.fantamomo.knot.shared.net.packets.PacketEnvelop
@@ -16,9 +17,9 @@ import com.fantamomo.knot.shared.net.transport.Transport
 import com.fantamomo.knot.shared.net.util.DefaultPacketDeduplicator
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import org.slf4j.LoggerFactory
 import java.net.Inet4Address
 import java.net.InetAddress
@@ -44,9 +45,9 @@ class Network(
     private val packetDeduplicator = DefaultPacketDeduplicator()
     val router = Router(this)
 
-    private val incomingPackets = Channel<IncomingPacket<Packet>>(
-        capacity = 64,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    private val incomingPackets = MutableSharedFlow<IncomingPacket<Packet>>(
+        extraBufferCapacity = 1024,
+        onBufferOverflow = BufferOverflow.SUSPEND
     )
 
     private val sslContext = TlsSecureTransport.createMutualTlsContext(
@@ -108,6 +109,11 @@ class Network(
         return listOf(PeerAddress(advertised, port))
     }
 
+    private suspend fun createMplexTransport(secureTransport: SecureTransport, initiator: Boolean): MplexTransport {
+        //return DefaultMplexTransport(secureTransport, if (initiator) 0 else 1)
+        return DirectMplexTransport(secureTransport)
+    }
+
     private suspend fun createSecureTransport(transport: Transport, initiator: Boolean): SecureTransport {
         val secureTransport = TlsSecureTransport(transport, localPeerId, sslContext)
         secureTransport.start()
@@ -127,7 +133,7 @@ class Network(
             val secureTransport = createSecureTransport(transport, initiator)
             val remotePeerId = secureTransport.remotePeerId
 
-            val mplexTransport = DefaultMplexTransport(secureTransport, if (initiator) 0 else 1)
+            val mplexTransport = createMplexTransport(secureTransport, initiator)
             mplexTransport.start()
 
             val connectedPeer = ConnectedPeer(this, remotePeerId, mplexTransport, client)
@@ -223,11 +229,11 @@ class Network(
         if (packet is ManagementPacket) {
             router.handleManagement(incoming)
         } else {
-            incomingPackets.send(incoming)
+            incomingPackets.emit(incoming)
         }
     }
 
-    fun incomingPackets(): Flow<IncomingPacket<*>> = incomingPackets.receiveAsFlow()
+    fun incomingPackets(): Flow<IncomingPacket<*>> = incomingPackets.asSharedFlow()
 
     companion object {
         private fun privateNetworkAddress(): InetAddress {

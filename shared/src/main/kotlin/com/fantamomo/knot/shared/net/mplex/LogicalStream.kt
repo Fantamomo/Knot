@@ -7,7 +7,6 @@ interface LogicalStream {
     val transport: MplexTransport
 
     val id: String
-    val internalId: Byte
 
     suspend fun send(packet: PacketEnvelop)
 

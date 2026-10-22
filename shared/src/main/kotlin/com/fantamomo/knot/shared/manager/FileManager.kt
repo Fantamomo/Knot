@@ -146,29 +146,33 @@ class FileManager(val network: Network, val outputDir: Path) {
         }
         val uploadId = responsePacket.uploadId ?: throw IllegalStateException("Upload ID not provided") // unreachable
 
-        val chunk = ByteArray(1024)
-        var chunks = 0
-        var size = 0L
+        try {
+            val chunk = ByteArray(1024)
+            var chunks = 0
+            var size = 0L
 
-        while (true) {
-            val read = source.readAtMostTo(chunk)
-            if (read == -1) {
-                val packet = FinishFileUploadPacket(uploadId, chunks, size)
-                network.sendPacket(packet, target)
-                logger.debug("Sent finish file upload packet for upload ID {}", uploadId)
-                break
+            while (true) {
+                val read = source.readAtMostTo(chunk)
+                if (read == -1) {
+                    val packet = FinishFileUploadPacket(uploadId, chunks, size)
+                    network.sendPacket(packet, target)
+                    logger.debug("Sent finish file upload packet for upload ID {}", uploadId)
+                    break
+                }
+
+                // we need to use copy, because we cannot guarantee that the chunk is directly written to connection
+                // so copying the chunk is necessary
+                val uploadedBytes = chunk.copyOf(read)
+                val chunkPacket = UploadFileChunkPacket(uploadId, chunks, uploadedBytes)
+
+                network.sendPacket(chunkPacket, target)
+                logger.debug("Sent upload file chunk packet for upload ID {}, chunk {}", uploadId, chunks)
+
+                chunks++
+                size += read
             }
-
-            // we need to use copy, because we cannot guarantee that the chunk is directly written to connection
-            // so copying the chunk is necessary
-            val uploadedBytes = chunk.copyOf(read)
-            val chunkPacket = UploadFileChunkPacket(uploadId, chunks, uploadedBytes)
-
-            network.sendPacket(chunkPacket, target)
-            logger.debug("Sent upload file chunk packet for upload ID {}, chunk {}", uploadId, chunks)
-
-            chunks++
-            size += read
+        } finally {
+            source.close()
         }
     }
 
