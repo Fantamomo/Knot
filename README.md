@@ -38,7 +38,8 @@ Go to the newest release and download the files that fits your needs.
 
 We build for the following platforms:
 1. JVM
-2. MacOS
+2. Linux
+3. MacOS
 
 ### MacOS
 
@@ -57,6 +58,15 @@ This removes the quarantine flag from the file, allowing you to run it, like:
 
 Read to [Running it](#running-it) section to learn how to run it.  
 The instructions using the JVM version, but you can just remove the prefix `java -jar` and add the suffix `-macos-arm64` to run the commands.
+
+### Linux
+
+Download the following files:
+1. `knot-cli-1.2-SNAPSHOT-linux-x64`
+2. `knot-node-1.2-SNAPSHOT-linux-x64`
+3. there is also `knot-cli-agent-1.2-SNAPSHOT-linux-x64` but it does nothing besides telling you that it does nothing. (Its only there for the future)
+
+Run them simple by executing `./<file>`, where `<file>` is one of the files above.
 
 ### JVM
 
