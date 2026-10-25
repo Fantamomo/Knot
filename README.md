@@ -13,6 +13,7 @@ Start a second node on a server and connect them.
 The connect via the cli and you can:
 1. upload files
 2. open a tunnel. Which will open a TCP server on the target and forwards all traffic to your local machine.
+3. do that, .... oh wait not yet implemented (stay tuned)
 
 ## What it is going to do!
 
@@ -33,9 +34,45 @@ Currently, it is just a very basic implementation that barely works.
 
 If you want to try it out, keep reading. But I warned you.
 
-Go to the newest release and download:
+Go to the newest release and download the files that fits your needs.
+
+We build for the following platforms:
+1. JVM
+2. MacOS
+
+### MacOS
+
+If you are on MacOS and want the easy way, just donwload the files ending in `macos-arm64` like:
+1. `knot-cli-1.2-SNAPSHOT-macos-arm64`
+2. `knot-node-1.2-SNAPSHOT-macos-arm64`
+3. there is also `knot-cli-agent-1.2-SNAPSHOT-macos-arm64` but it does nothing besides telling you that it does nothing. (Its only there for the future)
+
+Because it is unsigned and "possible" dangerous, apple will not allow you to run it.
+So if you want to run it anyway, you need to execute `xattr -d com.apple.quarantine <file>`, where `<file>` is one of the files above.  
+This removes the quarantine flag from the file, allowing you to run it, like:
+
+```shell
+./knot-cli-1.2-SNAPSHOT-macos-arm64
+```
+
+Read to [Running it](#running-it) section to learn how to run it.  
+The instructions using the JVM version, but you can just remove the prefix `java -jar` and add the suffix `-macos-arm64` to run the commands.
+
+### JVM
+
+Because it is build for JVM it runs everywhere a JVM can, which is everywhere.
+
+Download the following files:
 1. `knot-cli-X.X-SNAPSHOT.jar`
 2. `knot-node-X.X-SNAPSHOT.jar`
+
+And follow the [Running it](#running-it) section.
+
+### Windows
+
+I tried to compile it natively, but it didn't work. So you need to use the [JVM](#jvm) version.
+
+### Running it
 
 You need also download the [knot-pki.sh](utils/knot-pki.sh) (which was vibe-coded, but works).
 It allows you to generate the certificates for the peers.

@@ -21,30 +21,30 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
 
       - name: setup JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6.1.0
         with:
           distribution: 'temurin'
           java-version: '25'
 
       - name: setup gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: get project version
         id: get-version
         shell: bash
         run: |
           VERSION=$(./gradlew -q properties | awk -F ': ' '$1 == "version" { print $2; exit }')
-          
+
           if [ -z "$VERSION" ]; then
             echo "Failed to retrieve project version"
             exit 1
           fi
-          
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: check if version already exists
@@ -60,6 +60,56 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
+  build-jars:
+    needs: check-version
+    if: needs.check-version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: setup JDK
+        uses: actions/setup-java@v6.1.0
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: build project
+        run: ./gradlew shadowJar
+
+      - name: collect jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          shopt -s nullglob
+
+          for module in cli cli-agent node; do
+            jars=("$module"/build/libs/*.jar)
+
+            if [ ${#jars[@]} -eq 0 ]; then
+              echo "No JAR found for $module"
+              exit 1
+            fi
+
+            for jar in "${jars[@]}"; do
+              cp "$jar" "release-assets/${module}-$(basename "$jar")"
+            done
+          done
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-jars
+          path: release-assets/*
+          if-no-files-found: error
+
   build-native:
     needs: check-version
     if: needs.check-version.outputs.exists == 'false'
@@ -73,14 +123,11 @@ jobs:
           - os: macos-latest
             platform: macos-arm64
             ext: ''
-          - os: macos-13
-            platform: macos-x64
-            ext: ''
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
 
@@ -92,7 +139,7 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: setup gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: build native executables
         shell: bash
@@ -136,12 +183,13 @@ jobs:
       needs.check-version.outputs.exists == 'false' &&
       needs.check-version.result != 'failure' &&
       needs.check-version.result != 'cancelled' &&
-      needs.build-native.result != 'cancelled'
+      needs.build-native.result != 'cancelled' &&
+      needs.build-jars.result != 'cancelled'
     runs-on: ubuntu-latest
 
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
 
@@ -149,7 +197,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-assets
+          pattern: release-assets-*
           merge-multiple: true
+
+      - name: list release assets
+        run: ls -l release-assets
 
       - name: publish
         env:
