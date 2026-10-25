@@ -20,11 +20,12 @@ plugins {
     kotlin("jvm") version "2.4.20" apply false
     id("com.gradleup.shadow") version "9.6.1" apply false
     id("org.jetbrains.kotlinx.rpc.plugin") version "0.10.4" apply false
+    id("org.graalvm.buildtools.native") version "0.11.1" apply false
 }
 
 gradle.beforeProject {
     group = "com.fantamomo.knot"
-    version = "1.1-SNAPSHOT"
+    version = "1.2-SNAPSHOT"
 }
 
 rootProject.name = "Knot"

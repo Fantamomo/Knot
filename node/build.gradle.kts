@@ -4,6 +4,7 @@ plugins {
     application
     alias(libs.plugins.kotlinPluginSerialization)
     alias(libs.plugins.kotlinxPluginAtomicfu)
+    id("org.graalvm.buildtools.native")
 }
 
 dependencies {
@@ -26,6 +27,15 @@ tasks.shadowJar {
 
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
+    }
+}
+
+graalvmNative {
+    binaries {
+        named("main") {
+            imageName.set("knot-node")
+            mainClass.set(application.mainClass)
+        }
     }
 }
 

@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm")
     alias(libs.plugins.kotlinPluginSerialization)
     id("com.gradleup.shadow")
+    id("org.graalvm.buildtools.native")
     application
 }
 
@@ -27,5 +28,14 @@ tasks.shadowJar {
 
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
+    }
+}
+
+graalvmNative {
+    binaries {
+        named("main") {
+            imageName.set("knot-cli-agent")
+            mainClass.set(application.mainClass)
+        }
     }
 }

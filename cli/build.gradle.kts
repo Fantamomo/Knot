@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm")
     alias(libs.plugins.kotlinPluginSerialization)
     id("com.gradleup.shadow")
+    id("org.graalvm.buildtools.native")
     application
 }
 
@@ -62,4 +63,13 @@ val shadowJarWithoutAgent = tasks.register<com.github.jengelman.gradle.plugins.s
 
 tasks.shadowJar {
     finalizedBy(shadowJarWithoutAgent)
+}
+
+graalvmNative {
+    binaries {
+        named("main") {
+            imageName.set("knot-cli")
+            mainClass.set(application.mainClass)
+        }
+    }
 }
