@@ -64,6 +64,7 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.exists == 'false'
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -130,7 +131,12 @@ jobs:
 
   publish:
     needs: [check-version, build-native]
-    if: needs.check-version.outputs.exists == 'false'
+    if: |
+      always() &&
+      needs.check-version.outputs.exists == 'false' &&
+      needs.check-version.result != 'failure' &&
+      needs.check-version.result != 'cancelled' &&
+      needs.build-native.result != 'cancelled'
     runs-on: ubuntu-latest
 
     steps:
