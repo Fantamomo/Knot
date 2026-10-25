@@ -25,7 +25,7 @@ plugins {
 
 gradle.beforeProject {
     group = "com.fantamomo.knot"
-    version = "1.2-SNAPSHOT"
+    version = "1.3-SNAPSHOT"
 }
 
 rootProject.name = "Knot"
