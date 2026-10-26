@@ -15,11 +15,12 @@ dependencies {
     api(libs.kotlinxCli)
     api(libs.logback)
     api(libs.netty.all)
+    //api(kotlin("reflect"))
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinxCoroutines)
     testImplementation(libs.kotlinxCoroutinesTest)
-    implementation(kotlin("reflect"))
+    testImplementation("io.github.classgraph:classgraph:4.8.179")
 }
 
 tasks.test {

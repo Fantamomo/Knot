@@ -41,4 +41,6 @@ object PacketRegistry {
     fun <P : Packet> getCodec(clazz: KClass<P>): PacketCodec<P> = byClass[clazz] as? PacketCodec<P> ?: throw IllegalArgumentException("No packet codec registered for class: $clazz")
 
     inline fun <reified P : Packet> getCodec(): PacketCodec<P> = getCodec(P::class)
+
+    fun isRegistered(clazz: KClass<out Packet>): Boolean = byClass.containsKey(clazz)
 }
